@@ -1,4 +1,4 @@
 # blast
 - blastの検索結果はsamで出力できる
-  - けどfastaで出力してマッピングした方がよい？
+  - IGVでsort->indexすれば見れる
 - アメリカのオフィスアワーにでかいblastをNCBIでやると確かに重い
