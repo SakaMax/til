@@ -11,4 +11,8 @@
 
 # NCBI E-utilities
 - pythonでアクセスするならBiopythonの`Entrez`を使うと楽。 
-  - efetchするなら`handle = Entrez.efetch(db="nuccore", id="ACCESSION", retmode="xml")｀して `Entrez.read(handle)`でデータが取り出せる。
+  - efetchするなら`handle = Entrez.efetch(db="nuccore", id="ACCESSION", retmode="xml")｀ して `Entrez.read(handle)`でデータが取り出せる。
+
+# シェル周り
+  ## tr
+  - tqdmのログとかに含まれる`^M`を改行に変換する: `cat Hoge.seq.e | tr '\r' '\n'`
