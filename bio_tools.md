@@ -11,7 +11,8 @@
 
 # NCBI E-utilities
 - pythonでアクセスするならBiopythonの`Entrez`を使うと楽。 
-  - efetchするなら`handle = Entrez.efetch(db="nuccore", id="ACCESSION", retmode="xml")｀ して `Entrez.read(handle)`でデータが取り出せる。
+  - Genbank形式のデータ: `handle = Entrez.efetch(db="nuccore", id="ACCESSION", retmode="xml")` して `Entrez.read(handle) ->list[dict]`
+  - fasta形式のデータ: `handle = Entrez.efetch(db=db, id=ids, retmode="text", rettype="fasta")` して `handle.read() ->str`
 
 # シェル周り
   ## tr
