@@ -14,6 +14,9 @@
   - Genbank形式のデータ: `handle = Entrez.efetch(db="nuccore", id="ACCESSION", retmode="xml")` して `Entrez.read(handle) ->list[dict]`
   - fasta形式のデータ: `handle = Entrez.efetch(db=db, id=ids, retmode="text", rettype="fasta")` して `handle.read() ->str`
 
+# 変換
+- sam/bam -> fasta `samtools fasta input.bam > input.fa`
+
 # シェル周り
   ## tr
   - tqdmのログとかに含まれる`^M`を改行に変換する: `cat Hoge.seq.e | tr '\r' '\n'`
