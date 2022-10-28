@@ -82,11 +82,13 @@ GATK関連のツールを遺伝研スパコンで動かすときはスクリプ�
     - 十分なスレッド数が使えるときは`--native-pair-hmm-threads 10`をつけるのを推奨（根拠となる調査がどっかにあった）
 
 ## gvcfからvcfを作る
+g.vcf.gzのあるディレクトリで作業する
 - GenomicsDBImport
-	1. mapファイルの作成
+	1. mapファイルの作成 `ls | grep g.vcf.gz | sed -r 's/([A-Za-z0-9]+)(\.g\.vcf\.gz$)/\1\t\1\2/g' > cohort.map`
 	2. chromosome.txtの作成
 	3. GenomicsDBImport.shの作成
-	4. `parallel -j $(nproc) -v --result results2 './GenomicsDBImport.sh $(sed -n {}p chromosome.txt) cohort.map'  ::: $(seq 1 20) &`
+	4. インデックスの作成 `parallel -j $(nproc) 'tabix {}' ::: $(ls | grep g.vcf.gz)`
+	5. `parallel -j $(nproc) -v --result results2 './GenomicsDBImport.sh $(sed -n {}p chromosome.txt) cohort.map'  ::: $(seq 1 20) &`
 - GenotypeGVCFs
 	- 後で書く
 
@@ -107,6 +109,7 @@ gatk --java-options "-Xmx30g" GenomicsDBImport \
         -L "$1" \
         --sample-name-map "$2"
 ```
+既存のgenomicsDBに追加したいときは`--genomicsdb-workspace-path`を`--genomicsdb-update-workspace-path`に置き換える
 
 ## vcfのハードフィルタリング
 参照: [gatkのガイド](https://gatk.broadinstitute.org/hc/en-us/articles/360035531112--How-to-Filter-variants-either-with-VQSR-or-by-hard-filtering)
