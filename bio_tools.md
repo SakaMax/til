@@ -18,7 +18,3 @@
 
 # 変換
 - sam/bam -> fasta `samtools fasta input.bam > input.fa`
-
-# シェル周り
-  ## tr
-  - tqdmのログとかに含まれる`^M`を改行に変換する: `cat Hoge.seq.e | tr '\r' '\n'`
