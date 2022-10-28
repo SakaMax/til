@@ -81,6 +81,33 @@ GATK関連のツールを遺伝研スパコンで動かすときはスクリプ�
     - `-ERC GVCF`を引数につける
     - 十分なスレッド数が使えるときは`--native-pair-hmm-threads 10`をつけるのを推奨（根拠となる調査がどっかにあった）
 
+## gvcfからvcfを作る
+- GenomicsDBImport
+	1. mapファイルの作成
+	2. chromosome.txtの作成
+	3. GenomicsDBImport.shの作成
+	4. `parallel -j $(nproc) -v --result results2 './GenomicsDBImport.sh $(sed -n {}p chromosome.txt) cohort.map'  ::: $(seq 1 20) &`
+- GenotypeGVCFs
+	- 後で書く
+
+mapファイル
+```
+系統名	系統.g.vcf.gz
+```
+
+chromosome.txt
+```
+(gvcfの#CHROM列に登場する染色体名)
+```
+
+GenomicsDBImport.sh
+```
+gatk --java-options "-Xmx30g" GenomicsDBImport \
+        --genomicsdb-workspace-path ./"$1" \
+        -L "$1" \
+        --sample-name-map "$2"
+```
+
 ## vcfのハードフィルタリング
 参照: [gatkのガイド](https://gatk.broadinstitute.org/hc/en-us/articles/360035531112--How-to-Filter-variants-either-with-VQSR-or-by-hard-filtering)
 
