@@ -109,7 +109,7 @@ gatk --java-options "-Xmx30g" GenomicsDBImport \
         -L "$1" \
         --sample-name-map "$2"
 ```
-既存のgenomicsDBに追加したいときは`--genomicsdb-workspace-path`を`--genomicsdb-update-workspace-path`に置き換える
+既存のgenomicsDBに追加したいときは`--genomicsdb-workspace-path`を`--genomicsdb-update-workspace-path`に置き換え, `-L "$1" \`を消す
 
 ## vcfのハードフィルタリング
 参照: [gatkのガイド](https://gatk.broadinstitute.org/hc/en-us/articles/360035531112--How-to-Filter-variants-either-with-VQSR-or-by-hard-filtering)
