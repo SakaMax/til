@@ -90,7 +90,8 @@ g.vcf.gzのあるディレクトリで作業する
 	4. インデックスの作成 `parallel -j $(nproc) 'tabix {}' ::: $(ls | grep g.vcf.gz)`
 	5. `parallel -j $(nproc) -v --result results2 './GenomicsDBImport.sh $(sed -n {}p chromosome.txt) cohort.map'  ::: $(seq 1 20) &`
 - GenotypeGVCFs
-	- 後で書く
+	- `parallel -j 4 -v --result result_gmax 'L=$(sed -n {}p chromosome.txt) && echo "Chromosome ${L}" && gatk --java-options "-Xmx8g" GenotypeGVCFs  -R Wm82.a4.v1/Gmax_508_v4.0.softmasked.fa -V "gendb://${L}" -O "${L}_gmax.vcf.gz"' ::: $(seq 1 20) &`
+	- メモリを食うのでジョブ数とXmxはお好みで調整
 
 mapファイル
 ```
