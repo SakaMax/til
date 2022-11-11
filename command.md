@@ -9,6 +9,28 @@
 - `arguments.txt`が一行ずつ表示される
 - ただし順不同に並列実行されるため出力順はファイルの上から順とは異なる
 
+## pv
+
+`pipe view`の略らしい
+
+### 進捗を見ながら圧縮
+
+[参考](https://qiita.com/xkumiyu/items/9df519d767f921e29d20)
+
+<details>
+<summary>tarc-pv.sh</summary>
+
+```bash
+#!/bin/bash
+#$1 target
+tar -cf - ${1} | pv -c --name ${1} -s $(du -sb ${1} | awk '{print $1}')
+```
+
+</details>
+
+上記のスクリプトを使って
+`./tarc-pv.sh hoge | pbzip2 -9 -c -p6 -m500 > hoge.tar.bz2`
+
 ## sed
 
 ## マッチ部分を参照する
