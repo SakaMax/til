@@ -31,6 +31,9 @@ tar -cf - ${1} | pv -c --name ${1} -s $(du -sb ${1} | awk '{print $1}')
 上記のスクリプトを使って
 `./tarc-pv.sh hoge | pbzip2 -9 -c -p6 -m500 > hoge.tar.bz2`
 
+圧縮先のデータの流れも見たいなら
+`./tarc-pv.sh hoge | xz -9 -c -T 6 -M 12G | pv -c --name xz > hoge.tar.xz`
+
 ## sed
 
 ## マッチ部分を参照する
