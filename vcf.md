@@ -142,19 +142,36 @@ gatk --java-options "-Xmx30g" GenomicsDBImport \
 1. ディレクトリの作成 `mkdir -p tmp/snp tmp/indel tmp/snp-filtered tmp/indel-filtered`
 2. SNPの抽出 `parallel -j $(nproc) --result result-selectSNP 'gatk SelectVariants -V {} -select-type SNP -O tmp/snp/{}' ::: *.vcf.gz`
 3. indelの抽出 `parallel -j $(nproc) --result result-selectIndel 'gatk SelectVariants -V {} -select-type INDEL -O tmp/indel/{}' ::: *.vcf.gz`
-4. SNPのフィルタ
+4. SNPのフィルタ `parallel -j $(nproc) --result result-filterSNP --compress --tmp-dir parallel-tmp 'bash filter-snp.sh {} > {}-snp.log 2>&1' ::: *.vcf.gz`
+5. indelのフィルタ `parallel -j $(nproc) --result result-filterIndel --compress --tmp-dir parallel-tmp 'bash filter-indel.sh {} > {}-indel.log 2>&1' ::: *.vcf.gz`
 
 <details>
-<summary>SNPのフィルタリング</summary>
+<summary>filter-snp.sh</summary>
 
-```bash
-cat << "EOF" > filter-snp.sh 
+ ```bash
+#!/bin/bash
+
+# Path to files
+BEAGLE="/usr/local/bin/beagle.22Jul22.46e.jar"
 IN="tmp/snp/${1}"
-TMP="tmp/snp-filtered/${1%%.*}.raw.vcf.gz"
-OUT="tmp/snp-filtered/${1}"
+TMP="tmp/snp/${1}_tmp.vcf"
+RAW="tmp/snp-filtered/${1%%.*}.raw"
+OUT="tmp/snp-filtered/${1%%.*}.out"
 
+# Remove Spanning or overlapping deletions
+# See https://gatk.broadinstitute.org/hc/en-us/articles/360035531912-Spanning-or-overlapping-deletions-allele-
+zcat "${IN}" | \
+sed '/*/d' | \
+
+# Annotate SNPs
+bcftools annotate --set-id '%CHROM\_%POS\_%REF\_%ALT' > "${TMP}" && \
+
+# Filter SNPs (hard-filter)
+# see https://gatk.broadinstitute.org/hc/en-us/articles/360035890471-Hard-filtering-germline-short-variants
+# and https://gatk.broadinstitute.org/hc/en-us/articles/360035531012--How-to-Filter-on-genotype-using-VariantFiltration
+# Mark heterozygous genotype call as failure because our samples are pure lines.
 gatk VariantFiltration\
-    -V ${IN} \
+    -V "${TMP}" \
     -filter "QD < 2.0" --filter-name "QD2" \
     -filter "QUAL < 30.0" --filter-name "QUAL30" \
     -filter "SOR > 3.0" --filter-name "SOR3" \
@@ -162,45 +179,117 @@ gatk VariantFiltration\
     -filter "MQ < 40.0" --filter-name "MQ40" \
     -filter "MQRankSum < -12.5" --filter-name "MQRankSum-12.5" \
     -filter "ReadPosRankSum < -8.0" --filter-name "ReadPosRankSum-8" \
-    -O ${TMP} && \
-vcftools --gzvcf ${TMP} \
-  --recode --stdout  --remove-filtered-all | \
-bcftools view -Oz - -o ${OUT} && \
-tabix -p vcf ${OUT} && \
-rm ${TMP} ${TMP}.tbi
-EOF
+    --genotype-filter-expression "isHet == 1" --genotype-filter-name "isHetFilter" \
+    --genotype-filter-expression "DP < 10" --genotype-filter-name "DP10" \
+    -O "${RAW}.vcf.gz" && \
 
-parallel -j $(nproc) --result result-filterSNP 'bash filter-snp.sh {}' ::: *.vcf.gz
-```
+# Remove SNPs and genotypes without PASS
+gatk SelectVariants \
+    -V "${RAW}.vcf.gz" \
+    --exclude-filtered \
+    --set-filtered-gt-to-nocall \
+    -O "${RAW}.pass.vcf.gz" && \
+
+# Remove SNPs with call rate < 10% and maf < 5%
+plink2 --vcf "${RAW}.pass.vcf.gz" \
+    --geno 0.1 \
+    --maf 0.05 \
+    --out "${OUT}" \
+    --export vcf \
+    --allow-extra-chr \
+    --threads 1 && \
+
+# Compress and index
+bcftools view -Oz -o "${OUT}.vcf.gz" "${OUT}.vcf" && \
+tabix -p vcf "${OUT}.vcf.gz" && \
+
+# Impute
+java -Xmx8g -jar "${BEAGLE}" \
+    gt="${OUT}.vcf.gz" \
+    out="${OUT}.imputed" \
+    impute=true \
+    gp=true \
+    nthreads=1 && \
+
+# Index imputed vcf
+tabix "${OUT}.imputed.vcf.gz" && \
+
+# Remove temp file
+rm "${TMP}"
+
+ ```
+
 
 </details>
 
-5. indelのフィルタ
-
 <details>
-<summary>indelのフィルタリング</summary>
+<summary>filter-indel.sh</summary>
 
 ```bash
-cat << "EOF" > filter-indel.sh
-IN="tmp/indel/${1}"
-TMP="tmp/indel-filtered/${1%%.*}.raw.vcf.gz"
-OUT="tmp/indel-filtered/${1}"
+#!/bin/bash
 
+# Path to files
+BEAGLE="/usr/local/bin/beagle.22Jul22.46e.jar"
+IN="tmp/indel/${1}"
+TMP="tmp/indel-filtered/${1%%.*}_tmp.vcf"
+RAW="tmp/indel-filtered/${1%%.*}.raw"
+OUT="tmp/indel-filtered/${1%%.*}.out"
+
+# Remove Spanning or overlapping deletions
+# See https://gatk.broadinstitute.org/hc/en-us/articles/360035531912-Spanning-or-overlapping-deletions-allele-
+zcat "${IN}" | \
+sed '/*/d' | \
+
+# Annotate SNPs
+bcftools annotate --set-id '%CHROM\_%POS\_%REF\_%ALT' > "${TMP}" && \
+
+# Filter SNPs (hard-filter)
+# see https://gatk.broadinstitute.org/hc/en-us/articles/360035890471-Hard-filtering-germline-short-variants
+# and https://gatk.broadinstitute.org/hc/en-us/articles/360035531012--How-to-Filter-on-genotype-using-VariantFiltration
+# Mark heterozygous genotype call as failure because our samples are pure lines.
 gatk VariantFiltration \
-    -V ${IN} \
+    -V "${TMP}" \
     -filter "QD < 2.0" --filter-name "QD2" \
     -filter "QUAL < 30.0" --filter-name "QUAL30" \
     -filter "FS > 200.0" --filter-name "FS200" \
     -filter "ReadPosRankSum < -20.0" --filter-name "ReadPosRankSum-20" \
-    -O ${TMP} && \
-vcftools --gzvcf ${TMP} \
-  --recode --stdout  --remove-filtered-all | \
-bcftools view -Oz - -o ${OUT} && \
-tabix -p vcf ${OUT} && \
-rm ${TMP} ${TMP}.tbi
-EOF
+    --genotype-filter-expression "isHet == 1" --genotype-filter-name "isHetFilter" \
+    --genotype-filter-expression "DP < 10" --genotype-filter-name "DP10" \
+    -O "${RAW}.vcf.gz" && \
 
-parallel -j $(nproc) --result result-filterIndel 'bash filter-indel.sh {}' ::: *.vcf.gz
+# Remove SNPs and genotypes without PASS
+gatk SelectVariants \
+    -V "${RAW}.vcf.gz" \
+    --exclude-filtered \
+    --set-filtered-gt-to-nocall \
+    -O "${RAW}.pass.vcf.gz" && \
+
+# Remove SNPs with call rate < 10% and maf < 5%
+plink2 --vcf "${RAW}.pass.vcf.gz" \
+    --geno 0.1 \
+    --maf 0.05 \
+    --out "${OUT}" \
+    --export vcf \
+    --allow-extra-chr \
+    --threads 1 && \
+
+# Compress and index
+bcftools view -Oz -o "${OUT}.vcf.gz" "${OUT}.vcf" && \
+tabix -p vcf "${OUT}.vcf.gz" && \
+
+# Impute
+java -Xmx8g -jar "${BEAGLE}" \
+    gt="${OUT}.vcf.gz" \
+    out="${OUT}.imputed" \
+    impute=true \
+    gp=true \
+    nthreads=1 && \
+
+# Index imputed vcf
+tabix "${OUT}.imputed.vcf.gz" && \
+
+# Remove temp file
+rm "${TMP}"
 ```
 
 </details>
