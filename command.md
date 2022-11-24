@@ -9,6 +9,10 @@
 - `arguments.txt`が一行ずつ表示される
 - ただし順不同に並列実行されるため出力順はファイルの上から順とは異なる
 
+### 重い処理でエラーになって落ちるとき
+
+`--compress --tmpdir ./parallel-tmp`オプションをつける
+
 ## pv
 
 `pipe view`の略らしい
@@ -30,6 +34,9 @@ tar -cf - ${1} | pv -c --name ${1} -s $(du -sb ${1} | awk '{print $1}')
 
 上記のスクリプトを使って
 `./tarc-pv.sh hoge | pbzip2 -9 -c -p6 -m500 > hoge.tar.bz2`
+
+圧縮先のデータの流れも見たいなら
+`./tarc-pv.sh hoge | xz -9 -c -T 6 -M 12G | pv -c --name xz > hoge.tar.xz`
 
 ## sed
 
