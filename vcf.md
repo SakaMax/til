@@ -100,7 +100,7 @@ g.vcf.gzのあるディレクトリで作業する
 
 - GenomicsDBImport
 
- 1. mapファイルの作成 `ls | grep g.vcf.gz | sed -r 's/([A-Za-z0-9]+)(\.g\.vcf\.gz$)/\1\t\1\2/g' > cohort.map`
+ 1. mapファイルの作成 `ls | egrep 'g.vcf.gz$' | sed -r 's/([A-Za-z0-9]+)(\.g\.vcf\.gz$)/\1\t\1\2\t\1\2.tbi/g' > cohort.map`
  2. chromosome.txtの作成
  3. GenomicsDBImport.shの作成
  4. インデックスの作成 `parallel -j $(nproc) 'tabix {}' ::: $(ls | grep g.vcf.gz)`
